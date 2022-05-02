@@ -8,9 +8,9 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use thiserror::Error;
 
-mod extra;
-mod mapping;
-mod union;
+pub mod extra;
+pub mod mapping;
+pub mod union;
 
 #[derive(Debug, Error)]
 pub enum NewUnionFindError<P: Error, E: Error> {
