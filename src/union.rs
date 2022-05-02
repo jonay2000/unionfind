@@ -7,8 +7,8 @@ pub trait Union<T> {
 }
 
 impl<F, T> Union<T> for F
-    where
-        F: Fn(T, T) -> T,
+where
+    F: Fn(T, T) -> T,
 {
     type Err = Infallible;
 

@@ -32,10 +32,11 @@ pub struct UnionFind<T, M = HashMap<T, T>, E = ()> {
 type NewErr<M, E, T> =
     NewUnionFindError<<M as mapping::ParentMapping<T>>::Err, <E as Extra<T>>::ConstructErr>;
 
-
 impl UnionFind<usize, Vec<usize>, ByRank<Vec<usize>, usize>> {
     /// Constructs a new union find, using a hashmap as backing
-    pub fn new_vec(elems: impl IntoIterator<Item = usize> + Clone) -> Result<Self, mapping::AddError> {
+    pub fn new_vec(
+        elems: impl IntoIterator<Item = usize> + Clone,
+    ) -> Result<Self, mapping::AddError> {
         Ok(Self {
             parent: ParentMapping::identity_map(elems.clone())?,
             extra: ByRank::construct(elems)?,
@@ -45,11 +46,13 @@ impl UnionFind<usize, Vec<usize>, ByRank<Vec<usize>, usize>> {
 }
 
 impl<T> UnionFind<T, HashMap<T, T>, ()>
-    where
-        T: Clone + Hash + Eq,
+where
+    T: Clone + Hash + Eq,
 {
     /// Constructs a new union find, using a hashmap as backing
-    pub fn new_hashmap(elems: impl IntoIterator<Item = T> + Clone) -> Result<Self, mapping::AddError> {
+    pub fn new_hashmap(
+        elems: impl IntoIterator<Item = T> + Clone,
+    ) -> Result<Self, mapping::AddError> {
         Ok(Self {
             parent: ParentMapping::identity_map(elems)?,
             extra: (),
@@ -58,13 +61,14 @@ impl<T> UnionFind<T, HashMap<T, T>, ()>
     }
 }
 
-
 impl<T> UnionFind<T, BTreeMap<T, T>, ()>
-    where
-        T: Clone + Ord,
+where
+    T: Clone + Ord,
 {
     /// Constructs a new union find, using a btreemap as backing
-    pub fn new_btreemap(elems: impl IntoIterator<Item = T> + Clone) -> Result<Self, mapping::AddError> {
+    pub fn new_btreemap(
+        elems: impl IntoIterator<Item = T> + Clone,
+    ) -> Result<Self, mapping::AddError> {
         Ok(Self {
             parent: ParentMapping::identity_map(elems)?,
             extra: (),
@@ -94,7 +98,10 @@ impl<T: PartialEq, M: Mapping<T, T>, E> UnionFind<T, M, E> {
     /// but can be used through an immutable reference.
     ///
     /// Use [`find_shorten`] for a more efficient find.
-    pub fn find(&self, elem: &T) -> Option<T> where T: Clone {
+    pub fn find(&self, elem: &T) -> Option<T>
+    where
+        T: Clone,
+    {
         let parent = self.parent.get(elem)?.clone();
         if &parent == elem {
             Some(parent)
@@ -276,7 +283,6 @@ mod tests {
         assert_eq!(uf.find(&3), Some(3));
         assert_eq!(uf.find(&4), Some(4));
     }
-
 
     #[test]
     pub fn union_by() {
