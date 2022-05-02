@@ -1,16 +1,18 @@
+use std::convert::Infallible;
+
 pub trait Union<T> {
     type Err;
 
-    fn union(&self, a: &T, b: &T) -> Result<T, Self::Err>;
+    fn union(&self, a: T, b: T) -> Result<T, Self::Err>;
 }
 
-impl<F, T, E> Union<T> for F
-where
-    F: Fn(&T, &T) -> Result<T, E>,
+impl<F, T> Union<T> for F
+    where
+        F: Fn(T, T) -> T,
 {
-    type Err = E;
+    type Err = Infallible;
 
-    fn union(&self, a: &T, b: &T) -> Result<T, Self::Err> {
-        (self)(a, b)
+    fn union(&self, a: T, b: T) -> Result<T, Self::Err> {
+        Ok((self)(a, b))
     }
 }

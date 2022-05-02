@@ -92,6 +92,8 @@ where
     }
 }
 
+impl<K: Clone, T> IdentityMapping<K> for T where T: GrowableMapping<K, K> {}
+
 pub trait GrowableMapping<K, V>: Mapping<K, V> {
     /// Returns an empty mapping, which can be grown
     fn empty() -> Self;
@@ -237,7 +239,7 @@ impl<V> GrowableMapping<usize, V> for Vec<V> {
     }
 
     fn add(&mut self, key: usize, value: V) -> Result<(), AddError> {
-        if key != self.len() {
+        if key == self.len() {
             self.push(value);
             Ok(())
         } else {

@@ -1,9 +1,10 @@
 use crate::extra::{AddExtra, ByRank, Extra};
-use crate::mapping::{GrowableMapping, IdentityMapping, Mapping};
+use crate::mapping::{GrowableMapping, IdentityMapping, Mapping, ParentMapping};
 use crate::union::Union;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::error::Error;
+use std::hash::Hash;
 use std::marker::PhantomData;
 use thiserror::Error;
 
@@ -31,13 +32,54 @@ pub struct UnionFind<T, M = HashMap<T, T>, E = ()> {
 type NewErr<M, E, T> =
     NewUnionFindError<<M as mapping::ParentMapping<T>>::Err, <E as Extra<T>>::ConstructErr>;
 
+
+impl UnionFind<usize, Vec<usize>, ByRank<Vec<usize>, usize>> {
+    /// Constructs a new union find, using a hashmap as backing
+    pub fn new_vec(elems: impl IntoIterator<Item = usize> + Clone) -> Result<Self, mapping::AddError> {
+        Ok(Self {
+            parent: ParentMapping::identity_map(elems.clone())?,
+            extra: ByRank::construct(elems)?,
+            phantom: Default::default(),
+        })
+    }
+}
+
+impl<T> UnionFind<T, HashMap<T, T>, ()>
+    where
+        T: Clone + Hash + Eq,
+{
+    /// Constructs a new union find, using a hashmap as backing
+    pub fn new_hashmap(elems: impl IntoIterator<Item = T> + Clone) -> Result<Self, mapping::AddError> {
+        Ok(Self {
+            parent: ParentMapping::identity_map(elems)?,
+            extra: (),
+            phantom: Default::default(),
+        })
+    }
+}
+
+
+impl<T> UnionFind<T, BTreeMap<T, T>, ()>
+    where
+        T: Clone + Ord,
+{
+    /// Constructs a new union find, using a btreemap as backing
+    pub fn new_btreemap(elems: impl IntoIterator<Item = T> + Clone) -> Result<Self, mapping::AddError> {
+        Ok(Self {
+            parent: ParentMapping::identity_map(elems)?,
+            extra: (),
+            phantom: Default::default(),
+        })
+    }
+}
+
 impl<T, M, E> UnionFind<T, M, E>
 where
     M: mapping::ParentMapping<T>,
     T: Clone,
     E: Extra<T>,
 {
-    /// Constructs a new union find, using union by rank.
+    /// Constructs a new union find, allowing you to specify all type parameters.
     pub fn new(elems: impl IntoIterator<Item = T> + Clone) -> Result<Self, NewErr<M, E, T>> {
         Ok(Self {
             parent: M::identity_map(elems.clone()).map_err(NewUnionFindError::Parents)?,
@@ -52,12 +94,12 @@ impl<T: PartialEq, M: Mapping<T, T>, E> UnionFind<T, M, E> {
     /// but can be used through an immutable reference.
     ///
     /// Use [`find_shorten`] for a more efficient find.
-    pub fn find(&self, elem: &T) -> Option<&T> {
-        let parent = self.parent.get(elem)?;
-        if parent == elem {
+    pub fn find(&self, elem: &T) -> Option<T> where T: Clone {
+        let parent = self.parent.get(elem)?.clone();
+        if &parent == elem {
             Some(parent)
         } else {
-            let new_parent = self.find(parent)?;
+            let new_parent = self.find(&parent)?;
             Some(new_parent)
         }
     }
@@ -121,7 +163,7 @@ where
         }
 
         let res = union
-            .union(&parent1, &parent2)
+            .union(parent1.clone(), parent2.clone())
             .map_err(UnionError::NotUnionable)?;
 
         self.parent.set(parent1, res.clone());
@@ -207,5 +249,44 @@ where
             .map_err(AddError::Parents)?;
         self.extra.add(elem).map_err(AddError::Extra)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::UnionFind;
+
+    #[test]
+    pub fn simple() {
+        let uf = UnionFind::new_hashmap([1, 2, 3, 4]).unwrap();
+
+        assert_eq!(uf.find(&1), Some(1));
+        assert_eq!(uf.find(&2), Some(2));
+        assert_eq!(uf.find(&3), Some(3));
+        assert_eq!(uf.find(&4), Some(4));
+    }
+
+    #[test]
+    pub fn union() {
+        let mut uf = UnionFind::new_vec([0, 1, 2, 3, 4]).unwrap();
+        uf.union_by_rank(&1, &2).unwrap();
+
+        assert_eq!(uf.find(&0), Some(0));
+        assert_eq!(uf.find(&1), uf.find(&2));
+        assert_eq!(uf.find(&3), Some(3));
+        assert_eq!(uf.find(&4), Some(4));
+    }
+
+
+    #[test]
+    pub fn union_by() {
+        let mut uf = UnionFind::new_hashmap([0, 1, 2, 3, 4]).unwrap();
+        uf.union_by(&1, &2, |a, _b| a).unwrap();
+
+        assert_eq!(uf.find(&0), Some(0));
+        assert_eq!(uf.find(&1), Some(1));
+        assert_eq!(uf.find(&2), Some(1));
+        assert_eq!(uf.find(&3), Some(3));
+        assert_eq!(uf.find(&4), Some(4));
     }
 }
